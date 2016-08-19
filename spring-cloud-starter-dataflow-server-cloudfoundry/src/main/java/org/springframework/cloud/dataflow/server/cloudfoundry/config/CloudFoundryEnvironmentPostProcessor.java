@@ -19,6 +19,9 @@ package org.springframework.cloud.dataflow.server.cloudfoundry.config;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.cloud.dataflow.server.config.features.FeaturesProperties;
@@ -33,13 +36,22 @@ import org.springframework.core.env.MapPropertySource;
  */
 public class CloudFoundryEnvironmentPostProcessor implements EnvironmentPostProcessor {
 
+	private static final Log logger = LogFactory.getLog(CloudFoundryEnvironmentPostProcessor.class);
+
 	private static final String FEATURES_PREFIX = FeaturesProperties.FEATURES_PREFIX + ".";
 
 	@Override
 	public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
+		if (Boolean.valueOf(environment.getProperty(FEATURES_PREFIX + FeaturesProperties.TASKS_ENABLED))) {
+			logger.warn(FEATURES_PREFIX + FeaturesProperties.TASKS_ENABLED + " has been set to true directly. " +
+					"Be advised this is an EXPERIMENTAL feature, normally enabled via " + FEATURES_PREFIX + "experimental.tasks-enabled");
+		}
+
 		Map<String, Object> propertiesToOverride = new HashMap<>();
-		String isTasksEnabled = environment.getProperty(FEATURES_PREFIX + "experimental.tasksEnabled");
-		propertiesToOverride.put(FEATURES_PREFIX + FeaturesProperties.TASKS_ENABLED, Boolean.valueOf(isTasksEnabled));
-		environment.getPropertySources().addFirst(new MapPropertySource("CFDataflowServerProperties", propertiesToOverride));
+		boolean isTasksEnabled = Boolean.valueOf(environment.getProperty(FEATURES_PREFIX + "experimental.tasksEnabled"));
+		if (isTasksEnabled) {
+			propertiesToOverride.put(FEATURES_PREFIX + FeaturesProperties.TASKS_ENABLED, true);
+			environment.getPropertySources().addFirst(new MapPropertySource("CFDataflowServerProperties", propertiesToOverride));
+		}
 	}
 }
